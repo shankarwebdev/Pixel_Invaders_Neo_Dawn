@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>Pixel Invaders: Neo Dawn</title>
+    <style>
+      :root {
+        --bg1: #060912;
+        --bg2: #0b1224;
+        --accent: #5ef2ff;
+        --accent2: #ff5ea8;
+        --hud: #c7f7ff;
+        --ok: #33e18f;
+        --warn: #ffb020;
+        --bad: #ff6f6f;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        background: radial-gradient(
+          1200px 800px at 50% 30%,
+          #0b1730 0%,
+          #070b18 60%,
+          #03050b 100%
+        );
+        color: var(--hud);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas,
+          "Liberation Mono", monospace;
+        overflow: hidden;
+      }
+      #wrap {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+      }
+      #screen {
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+        display: block;
+        background: transparent;
+      }
+      .hud {
+        position: fixed;
+        top: env(safe-area-inset-top, 8px);
+        left: 0;
+        right: 0;
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: center;
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 8px 16px;
+        mix-blend-mode: screen;
+        font-weight: 700;
+        letter-spacing: 1px;
+        text-shadow: 0 0 8px #00eaff55, 0 0 2px #000;
+        user-select: none;
+        pointer-events: none;
+      }
+      .hud .left,
+      .hud .right {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+      .hud .right {
+        justify-self: end;
+      }
+      .pill {
+        pointer-events: auto;
+        font-size: 12px;
+        padding: 6px 10px;
+        border: 1px solid #3ad9ff44;
+        border-radius: 999px;
+        background: #0b122480;
+        color: #e6fcff;
+      }
+      .pill[aria-pressed="true"] {
+        outline: 2px solid #5ef2ff66;
+      }
+      .controls {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 10px;
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        align-items: center;
+        pointer-events: none;
+      }
+      .controls button {
+        pointer-events: auto;
+        font-size: clamp(14px, 4vw, 22px);
+        padding: 14px 18px;
+        border-radius: 14px;
+        border: 2px solid #3ad9ff40;
+        background: linear-gradient(180deg, #0b1428cc 0%, #0b0f23cc 100%);
+        color: #e6fcff;
+        box-shadow: 0 6px 20px #00d1ff22, inset 0 0 0 1px #8df5ff20;
+        backdrop-filter: blur(6px);
+        -webkit-tap-highlight-color: transparent;
+      }
+      .controls button:active {
+        transform: translateY(1px) scale(0.98);
+      }
+      .controls .spacer {
+        width: min(8vw, 50px);
+      }
+      @media (pointer: fine) and (min-width: 900px) {
+        .controls {
+          opacity: 0.12;
+          transition: opacity 0.2s ease;
+        }
+        .controls:hover {
+          opacity: 1;
+        }
+      }
+      footer {
+        position: fixed;
+        right: 10px;
+        bottom: 10px;
+        font-size: 12px;
+        opacity: 0.6;
+      }
+      .overlay {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        background: rgba(3, 5, 11, 0.64);
+        backdrop-filter: blur(3px);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.18s ease;
+      }
+      .overlay.show {
+        opacity: 1;
+        pointer-events: auto;
+      }
+      .card {
+        width: min(94vw, 520px);
+        background: #0b1224f2;
+        border: 1px solid #3ad9ff33;
+        border-radius: 16px;
+        box-shadow: 0 14px 60px #0008, inset 0 0 0 1px #fff1;
+        padding: 18px;
+      }
+      .card h3 {
+        margin: 0 0 6px 0;
+        font-size: 18px;
+        letter-spacing: 0.6px;
+      }
+      .card p {
+        margin: 6px 0 14px;
+        opacity: 0.9;
+      }
+      .row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        border-radius: 12px;
+        border: 1px solid #3ad9ff40;
+        background: #0b1329;
+        color: #e6fcff;
+        cursor: pointer;
+        font-weight: 700;
+      }
+      .btn.primary {
+        background: linear-gradient(180deg, #112b4a, #0c1833);
+        border-color: #57e8ff66;
+      }
+      .btn.ok {
+        background: linear-gradient(180deg, #0f3b2a, #0b231b);
+        border-color: #33e18f66;
+      }
+      .btn.ghost {
+        background: #0b132980;
+      }
+      .note {
+        font-size: 12px;
+        opacity: 0.7;
+      }
+      .hidden {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="wrap">
+      <canvas id="screen" aria-label="Pixel Invaders: Neo Dawn canvas"></canvas>
+    </div>
+
+    <div class="hud" role="presentation">
+      <div class="left">
+        <div id="score">SCORE: 0000</div>
+        <div id="hi" class="pill" aria-live="polite" title="High score (local)">
+          HI: 0000
+        </div>
+      </div>
+      <div class="mid">
+        <button id="pauseBtn" class="pill" aria-pressed="false">PAUSE</button>
+      </div>
+      <div class="right">
+        <div id="level">LEVEL: 1</div>
+        <button
+          id="muteBtn"
+          class="pill"
+          aria-pressed="false"
+          title="Toggle sound"
+        >
+          SOUND: ON
+        </button>
+      </div>
+    </div>
+
+    <div class="controls" aria-label="On-screen controls">
+      <button id="leftBtn" aria-label="Move Left">◀</button>
+      <button id="rightBtn" aria-label="Move Right">▶</button>
+      <div class="spacer" aria-hidden="true"></div>
+      <button id="fireBtn" aria-label="Fire">●</button>
+    </div>
+
+    <div
+      id="gameoverOverlay"
+      class="overlay"
+      aria-modal="true"
+      role="dialog"
+      aria-labelledby="goTitle"
+      aria-hidden="true"
+    >
+      <div class="card">
+        <h3 id="goTitle">Game Over</h3>
+        <p id="goDesc">Your score: <b id="goScore">0</b></p>
+        <div class="row">
+          <button id="retryBtn" class="btn primary">Retry</button>
+          <button id="rewardBtn" class="btn ok hidden">
+            Continue (Watch Ad)
+          </button>
+          <button id="quitBtn" class="btn ghost">Quit</button>
+        </div>
+        <div id="adNote" class="note hidden">Ad loading…</div>
+      </div>
+    </div>
+
+    <footer></footer>
+
+    <script>
+      (() => {
+        "use strict";
+        const VW = 200,
+          VH = 300;
+        const screen = document.getElementById("screen");
+        const ctxMain = screen.getContext("2d");
+        const buffer = document.createElement("canvas");
+        buffer.width = VW;
+        buffer.height = VH;
+        const ctx = buffer.getContext("2d", { alpha: true });
+
+        function resize() {
+          const vpW = innerWidth,
+            vpH = innerHeight;
+          const dpr = window.devicePixelRatio || 1;
+          const padY = 24;
+          const scaleByH = Math.floor(((vpH - padY) * dpr) / VH);
+          const scaleByW = Math.floor((vpW * dpr) / VW);
+          const scale = Math.max(1, Math.min(scaleByH, scaleByW));
+          screen.width = VW * scale;
+          screen.height = VH * scale;
+          screen.style.width = screen.width / dpr + "px";
+          screen.style.height = screen.height / dpr + "px";
+          ctxMain.imageSmoothingEnabled = false;
+          screen.dataset.pixScale = String(scale);
+        }
+        addEventListener("resize", resize);
+        resize();
+
+        const scoreEl = document.getElementById("score");
+        const levelEl = document.getElementById("level");
+        const pauseBtn = document.getElementById("pauseBtn");
+        const muteBtn = document.getElementById("muteBtn");
+        const hiEl = document.getElementById("hi");
+
+        const goOverlay = document.getElementById("gameoverOverlay");
+        const goScoreEl = document.getElementById("goScore");
+        const retryBtn = document.getElementById("retryBtn");
+        const rewardBtn = document.getElementById("rewardBtn");
+        const quitBtn = document.getElementById("quitBtn");
+        const adNote = document.getElementById("adNote");
+
+        let state = "title",
+          score = 0,
+          level = 1,
+          lives = 3,
+          tick = 0;
+
+        const LS = {
+          get(k, d) {
+            try {
+              const v = localStorage.getItem(k);
+              return v == null ? d : JSON.parse(v);
+            } catch (e) {
+              return d;
+            }
+          },
+          set(k, v) {
+            try {
+              localStorage.setItem(k, JSON.stringify(v));
+            } catch (e) {}
+          },
+        };
+        let high = LS.get("si_neo_hi", 0);
+        updateHigh();
+        function updateHigh() {
+          hiEl.textContent = "HI: " + String(high).padStart(4, "0");
+        }
+
+        let audioCtx = null,
+          muted = false;
+        function ensureAudio() {
+          if (!audioCtx)
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        function setMuted(on) {
+          muted = !!on;
+          muteBtn.textContent = "SOUND: " + (muted ? "OFF" : "ON");
+          muteBtn.setAttribute("aria-pressed", String(muted));
+        }
+        function beep({
+          type = "square",
+          freq = 440,
+          dur = 0.08,
+          vol = 0.2,
+          attack = 0.005,
+          release = 0.1,
+          sweep = 0,
+        }) {
+          if (!audioCtx || muted) return;
+          const t0 = audioCtx.currentTime;
+          const o = audioCtx.createOscillator();
+          o.type = type;
+          o.frequency.value = freq;
+          const g = audioCtx.createGain();
+          g.gain.setValueAtTime(0, t0);
+          g.gain.linearRampToValueAtTime(vol, t0 + attack);
+          if (sweep !== 0)
+            o.frequency.exponentialRampToValueAtTime(
+              Math.max(40, freq * Math.pow(2, sweep)),
+              t0 + dur * 0.9
+            );
+          g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur + release);
+          o.connect(g).connect(audioCtx.destination);
+          o.start(t0);
+          o.stop(t0 + dur + release + 0.02);
+        }
+        function noise({
+          dur = 0.2,
+          vol = 0.12,
+          attack = 0.005,
+          release = 0.2,
+        }) {
+          if (!audioCtx || muted) return;
+          const t0 = audioCtx.currentTime;
+          const N = audioCtx.sampleRate * dur;
+          const buf = audioCtx.createBuffer(1, N, audioCtx.sampleRate);
+          const data = buf.getChannelData(0);
+          for (let i = 0; i < N; i++) data[i] = Math.random() * 2 - 1;
+          const src = audioCtx.createBufferSource();
+          src.buffer = buf;
+          const f = audioCtx.createBiquadFilter();
+          f.type = "lowpass";
+          f.frequency.value = 800;
+          const g = audioCtx.createGain();
+          g.gain.setValueAtTime(0, t0);
+          g.gain.linearRampToValueAtTime(vol, t0 + attack);
+          g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur + release);
+          src.connect(f).connect(g).connect(audioCtx.destination);
+          src.start(t0);
+          src.stop(t0 + dur + release + 0.02);
+        }
+        const sfx = {
+          shoot: () =>
+            beep({
+              type: "square",
+              freq: 680,
+              dur: 0.09,
+              vol: 0.18,
+              sweep: -0.15,
+            }),
+          explode: () => {
+            noise({ dur: 0.22, vol: 0.18 });
+            beep({ type: "sawtooth", freq: 120, dur: 0.12, vol: 0.08 });
+          },
+          hit: () =>
+            beep({
+              type: "square",
+              freq: 260,
+              dur: 0.08,
+              vol: 0.15,
+              sweep: -0.1,
+            }),
+          power: () => {
+            beep({ type: "triangle", freq: 480, dur: 0.08, vol: 0.14 });
+            beep({ type: "triangle", freq: 720, dur: 0.1, vol: 0.14 });
+          },
+          step: () =>
+            beep({
+              type: "square",
+              freq: 220 + (tick % 4) * 25,
+              dur: 0.05,
+              vol: 0.08,
+            }),
+        };
+
+        const keys = { left: false, right: false, fire: false };
+        function onKey(e, isDown) {
+          const k = e.key.toLowerCase();
+          if (k === "arrowleft" || k === "a") keys.left = isDown;
+          if (k === "arrowright" || k === "d") keys.right = isDown;
+          if (k === " " || k === "arrowup" || k === "w") keys.fire = isDown;
+          if (k === "p" && isDown) togglePause();
+          if (isDown) ensureAudio();
+        }
+        addEventListener("keydown", (e) => {
+          onKey(e, true);
+          if (["ArrowLeft", "ArrowRight", "ArrowUp", " "].includes(e.key))
+            e.preventDefault();
+        });
+        addEventListener("keyup", (e) => onKey(e, false));
+        bindBtn(
+          "leftBtn",
+          () => (keys.left = true),
+          () => (keys.left = false)
+        );
+        bindBtn(
+          "rightBtn",
+          () => (keys.right = true),
+          () => (keys.right = false)
+        );
+        bindBtn(
+          "fireBtn",
+          () => (keys.fire = true),
+          () => (keys.fire = false)
+        );
+        pauseBtn.addEventListener("click", () => {
+          ensureAudio();
+          togglePause();
+        });
+        muteBtn.addEventListener("click", () => setMuted(!muted));
+        function bindBtn(id, on, off) {
+          const btn = document.getElementById(id);
+          const start = (e) => {
+            e.preventDefault();
+            ensureAudio();
+            on();
+          };
+          const end = (e) => {
+            e.preventDefault();
+            off();
+          };
+          btn.addEventListener("pointerdown", start);
+          btn.addEventListener("pointerup", end);
+          btn.addEventListener("pointerleave", end);
+          btn.addEventListener("pointercancel", end);
+        }
+
+        const player = {
+          x: VW / 2,
+          y: VH - 24,
+          w: 13,
+          h: 9,
+          speed: 70,
+          cooldown: 0,
+          inv: 0,
+        };
+        const bullets = [],
+          eBullets = [];
+        let aliens = [],
+          dir = 1,
+          stepTimer = 0,
+          stepInterval = 0.6,
+          waveDrop = 12,
+          alienSpeed = 12,
+          fireChance = 0.003;
+
+        const stars = [];
+        let rngSeed = 1337;
+        function rand() {
+          rngSeed = (rngSeed * 1664525 + 1013904223) | 0;
+          return (rngSeed >>> 0) / 4294967295;
+        }
+        function initStars() {
+          stars.length = 0;
+          for (let i = 0; i < 120; i++) {
+            stars.push({
+              x: rand() * VW,
+              y: rand() * VH,
+              z: rand() * 1.2 + 0.2,
+              b: rand() * 0.6 + 0.4,
+            });
+          }
+        }
+        initStars();
+
+        const SPR = {
+          player: [
+            "0010010",
+            "0111110",
+            "1111111",
+            "1011101",
+            "0011100",
+            "0111110",
+            "0100010",
+            "1000001",
+            "0100010",
+          ],
+          alien1: [
+            "0011100",
+            "0100010",
+            "1011101",
+            "1111111",
+            "0100010",
+            "0011100",
+          ],
+          alien2: [
+            "0011100",
+            "0111110",
+            "1100011",
+            "1111111",
+            "0110110",
+            "0100010",
+          ],
+          alien3: [
+            "0011100",
+            "0101010",
+            "1111111",
+            "1011101",
+            "0100010",
+            "1011101",
+          ],
+          heart: [
+            "01100110",
+            "11111111",
+            "11111111",
+            "11111111",
+            "01111110",
+            "00111100",
+            "00011000",
+            "00000000",
+          ],
+        };
+        function drawSprite(name, x, y, col = "#8af7ff", shadow = "#14344a") {
+          const m = SPR[name];
+          if (!m) return;
+          for (let j = 0; j < m.length; j++) {
+            const row = m[j];
+            for (let i = 0; i < row.length; i++)
+              if (row[i] === "1") {
+                ctx.fillStyle = shadow;
+                ctx.fillRect(
+                  Math.floor(x + i + 1),
+                  Math.floor(y + j + 1),
+                  1,
+                  1
+                );
+                ctx.fillStyle = col;
+                ctx.fillRect(Math.floor(x + i), Math.floor(y + j), 1, 1);
+              }
+          }
+        }
+
+        function spawnWave() {
+          aliens = [];
+          const rows = Math.min(5, 3 + Math.floor((level - 1) / 2));
+          const cols = Math.min(11, 8 + Math.floor(level / 2));
+          const types = ["alien1", "alien2", "alien3"];
+          const sx = 12,
+            sy = 12;
+          const startX = Math.floor((VW - (cols - 1) * sx) / 2) - 5;
+          const startY = 40;
+          for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+              aliens.push({
+                x: startX + c * sx,
+                y: startY + r * sy,
+                w: 9,
+                h: 6,
+                type: types[(r + level) % types.length],
+                alive: true,
+              });
+            }
+          }
+          dir = 1;
+          stepInterval = Math.max(0.18, 0.6 - level * 0.04);
+          waveDrop = Math.max(6, 14 - level);
+          alienSpeed = Math.min(24, 10 + level * 2);
+          fireChance = Math.min(0.02, 0.003 + level * 0.002);
+        }
+        spawnWave();
+
+        function rectsIntersect(a, b) {
+          return (
+            a.x < b.x + b.w &&
+            a.x + a.w > b.x &&
+            a.y < b.y + b.h &&
+            a.y + a.h > b.y
+          );
+        }
+
+        const ad = (() => {
+          const hasCG = !!(
+            window.CrazyGames &&
+            window.CrazyGames.SDK &&
+            window.CrazyGames.SDK.ad
+          );
+          const hasGM = !!(
+            window.sdk && typeof window.sdk.showBanner === "function"
+          );
+          const provider = hasCG
+            ? "crazygames"
+            : hasGM
+            ? "gamemonetize"
+            : "none";
+          function pauseForAdStart() {
+            setMuted(true);
+            state = "paused";
+          }
+          function resumeAfterAd() {
+            setMuted(false);
+            state = "playing";
+          }
+          async function midgame() {
+            if (provider === "crazygames") {
+              return new Promise((res) => {
+                const cb = {
+                  adStarted: () => pauseForAdStart(),
+                  adFinished: () => {
+                    resumeAfterAd();
+                    res(true);
+                  },
+                  adError: () => {
+                    resumeAfterAd();
+                    res(false);
+                  },
+                };
+                window.CrazyGames.SDK.ad.requestAd("midgame", cb);
+              });
+            }
+            if (provider === "gamemonetize") {
+              try {
+                window.sdk.showBanner && window.sdk.showBanner();
+                return true;
+              } catch (e) {
+                return false;
+              }
+            }
+            return false;
+          }
+          async function rewarded() {
+            if (provider === "crazygames") {
+              return new Promise((res) => {
+                const cb = {
+                  adStarted: () => pauseForAdStart(),
+                  adFinished: () => {
+                    resumeAfterAd();
+                    res(true);
+                  },
+                  adError: () => {
+                    resumeAfterAd();
+                    res(false);
+                  },
+                };
+                window.CrazyGames.SDK.ad.requestAd("rewarded", cb);
+              });
+            }
+            return false;
+          }
+          return {
+            provider,
+            midgame,
+            rewarded,
+            supportsRewarded: provider === "crazygames",
+          };
+        })();
+        if (ad.supportsRewarded) rewardBtn.classList.remove("hidden");
+
+        let last = performance.now();
+        function loop(now) {
+          const dt = Math.min(0.033, (now - last) / 1000);
+          last = now;
+          if (state === "playing") update(dt);
+          render();
+          requestAnimationFrame(loop);
+        }
+        requestAnimationFrame(loop);
+
+        function update(dt) {
+          tick++;
+          const speed = player.speed;
+          if (keys.left) player.x -= speed * dt;
+          if (keys.right) player.x += speed * dt;
+          player.x = Math.max(8, Math.min(VW - 8, player.x));
+          if (player.inv > 0) player.inv -= dt;
+          if (player.cooldown > 0) player.cooldown -= dt;
+          if (keys.fire && player.cooldown <= 0) {
+            bullets.push({
+              x: player.x - 1,
+              y: player.y - 8,
+              w: 2,
+              h: 6,
+              vy: -160,
+            });
+            player.cooldown = 0.22;
+            sfx.shoot();
+          }
+          for (const b of bullets) b.y += b.vy * dt;
+          for (const b of eBullets) b.y += b.vy * dt;
+          for (let i = bullets.length - 1; i >= 0; i--)
+            if (bullets[i].y < -10) bullets.splice(i, 1);
+          for (let i = eBullets.length - 1; i >= 0; i--)
+            if (eBullets[i].y > VH + 10) eBullets.splice(i, 1);
+
+          stepTimer -= dt;
+          if (stepTimer <= 0) {
+            stepTimer =
+              stepInterval * Math.max(0.2, aliensAlive() / aliens.length);
+            let reverse = false;
+            for (const a of aliens)
+              if (a.alive) {
+                a.x += dir * (alienSpeed / 2);
+                if (a.x < 6 || a.x + a.w > VW - 6) reverse = true;
+              }
+            if (reverse) {
+              dir *= -1;
+              for (const a of aliens)
+                if (a.alive) {
+                  a.y += waveDrop;
+                  if (a.y + a.h >= player.y - 2) damagePlayer();
+                }
+            }
+            sfx.step();
+          }
+
+          if (Math.random() < fireChance) {
+            const shooters = bottomAliens();
+            if (shooters.length) {
+              const a = shooters[Math.floor(Math.random() * shooters.length)];
+              eBullets.push({
+                x: a.x + a.w / 2 - 1,
+                y: a.y + a.h,
+                w: 2,
+                h: 6,
+                vy: 80 + level * 10,
+              });
+            }
+          }
+
+          for (let i = bullets.length - 1; i >= 0; i--) {
+            const b = bullets[i];
+            for (const a of aliens)
+              if (a.alive) {
+                if (rectsIntersect(b, a)) {
+                  a.alive = false;
+                  bullets.splice(i, 1);
+                  const pts =
+                    (a.type === "alien1" ? 10 : a.type === "alien2" ? 20 : 30) *
+                    level;
+                  score += pts;
+                  sfx.explode();
+                  break;
+                }
+              }
+          }
+          if (player.inv <= 0) {
+            for (let i = eBullets.length - 1; i >= 0; i--) {
+              if (rectsIntersect(eBullets[i], player)) {
+                eBullets.splice(i, 1);
+                damagePlayer();
+                break;
+              }
+            }
+          }
+
+          if (aliensAlive() === 0) {
+            level++;
+            levelEl.textContent = "LEVEL: " + level;
+            sfx.power();
+            ad.midgame().finally(() => {
+              spawnWave();
+            });
+          }
+          scoreEl.textContent = "SCORE: " + String(score).padStart(4, "0");
+        }
+
+        function aliensAlive() {
+          let n = 0;
+          for (const a of aliens) if (a.alive) n++;
+          return n;
+        }
+        function bottomAliens() {
+          const byCol = new Map();
+          for (const a of aliens)
+            if (a.alive) {
+              const cx = Math.round(a.x);
+              const prev = byCol.get(cx);
+              if (!prev || a.y > prev.y) byCol.set(cx, a);
+            }
+          return Array.from(byCol.values());
+        }
+
+        function damagePlayer() {
+          if (player.inv > 0) return;
+          lives--;
+          player.inv = 1.5;
+          sfx.hit();
+          if (lives < 0) {
+            showGameOver();
+          } else {
+            player.x = VW / 2;
+          }
+        }
+        function showGameOver() {
+          state = "gameover";
+          goScoreEl.textContent = String(score);
+          goOverlay.classList.add("show");
+          goOverlay.setAttribute("aria-hidden", "false");
+          if (score > high) {
+            high = score;
+            LS.set("si_neo_hi", high);
+            updateHigh();
+          }
+        }
+
+        retryBtn.addEventListener("click", () => {
+          ensureAudio();
+          goOverlay.classList.remove("show");
+          goOverlay.setAttribute("aria-hidden", "true");
+          resetGame();
+          startGame();
+        });
+        quitBtn.addEventListener("click", () => {
+          ensureAudio();
+          goOverlay.classList.remove("show");
+          goOverlay.setAttribute("aria-hidden", "true");
+          resetGame();
+        });
+
+        rewardBtn.addEventListener("click", async () => {
+          if (!ad.supportsRewarded) return;
+          adNote.classList.remove("hidden");
+          const ok = await ad.rewarded();
+          adNote.classList.add("hidden");
+          if (ok) {
+            lives = 1;
+            player.inv = 2;
+            state = "playing";
+            goOverlay.classList.remove("show");
+            goOverlay.setAttribute("aria-hidden", "true");
+          } else {
+            rewardBtn.textContent = "No ad available (try again)";
+            setTimeout(() => {
+              rewardBtn.textContent = "Continue (Watch Ad)";
+            }, 2000);
+          }
+        });
+
+        function togglePause() {
+          if (state === "playing") {
+            state = "paused";
+            pauseBtn.textContent = "RESUME";
+            pauseBtn.setAttribute("aria-pressed", "true");
+          } else if (state === "paused") {
+            state = "playing";
+            pauseBtn.textContent = "PAUSE";
+            pauseBtn.setAttribute("aria-pressed", "false");
+          } else if (state === "title") {
+            startGame();
+          } else if (state === "gameover") {
+            resetGame();
+          }
+        }
+        function startGame() {
+          ensureAudio();
+          state = "playing";
+          score = 0;
+          level = 1;
+          lives = 3;
+          player.inv = 0;
+          levelEl.textContent = "LEVEL: " + level;
+          scoreEl.textContent = "SCORE: 0000";
+          spawnWave();
+        }
+        function resetGame() {
+          state = "title";
+          score = 0;
+          level = 1;
+          lives = 3;
+          player.x = VW / 2;
+          player.y = VH - 24;
+          player.inv = 0;
+          bullets.length = 0;
+          eBullets.length = 0;
+          initStars();
+          spawnWave();
+          pauseBtn.textContent = "PAUSE";
+          pauseBtn.setAttribute("aria-pressed", "false");
+        }
+
+        function render() {
+          ctx.clearRect(0, 0, VW, VH);
+          drawBackground();
+          if (state === "title") drawTitle();
+          else {
+            drawGame();
+            if (state === "paused") drawPaused();
+            if (state === "gameover") drawGameOver();
+          }
+          ctxMain.imageSmoothingEnabled = false;
+          ctxMain.clearRect(0, 0, screen.width, screen.height);
+          ctxMain.drawImage(buffer, 0, 0, screen.width, screen.height);
+        }
+
+        function drawBackground() {
+          for (const s of stars) {
+            s.y += (s.z * 8) / 60;
+            if (s.y > VH) {
+              s.y = -1;
+              s.x = Math.random() * VW;
+              s.z = Math.random() * 1.2 + 0.2;
+              s.b = Math.random() * 0.6 + 0.4;
+            }
+          }
+          for (const s of stars) {
+            const br = Math.floor(120 + s.b * 120);
+            ctx.fillStyle = `rgb(${Math.floor(br * 0.7)},${Math.floor(
+              br * 0.9
+            )},${br})`;
+            ctx.fillRect(Math.floor(s.x), Math.floor(s.y), 1, 1);
+            if (s.z > 1.0 && Math.random() < 0.5)
+              ctx.fillRect(Math.floor(s.x + 1), Math.floor(s.y), 1, 1);
+          }
+          const grd = ctx.createRadialGradient(
+            VW / 2,
+            VH * 0.5,
+            Math.min(VW, VH) * 0.2,
+            VW / 2,
+            VH * 0.5,
+            VH * 0.8
+          );
+          grd.addColorStop(0, "rgba(0,0,0,0)");
+          grd.addColorStop(1, "rgba(0,0,0,.5)");
+          ctx.fillStyle = grd;
+          ctx.fillRect(0, 0, VW, VH);
+          ctx.fillStyle = "rgba(0,0,0,.07)";
+          for (let y = 0; y < VH; y += 2) ctx.fillRect(0, y, VW, 1);
+        }
+
+        function drawGame() {
+          if (
+            !(player.inv > 0 && Math.floor(performance.now() / 100) % 2 === 0)
+          )
+            drawSprite(
+              "player",
+              Math.floor(player.x - SPR.player[0].length / 2),
+              Math.floor(player.y - SPR.player.length / 2),
+              "#9cfaff",
+              "#123447"
+            );
+          ctx.fillStyle = "#9cfaff";
+          for (const b of bullets)
+            ctx.fillRect(Math.floor(b.x), Math.floor(b.y), b.w, b.h);
+          ctx.fillStyle = "#ff6f9d";
+          for (const b of eBullets)
+            ctx.fillRect(Math.floor(b.x), Math.floor(b.y), b.w, b.h);
+          const stepPulse =
+            (Math.sin(performance.now() / 200) + 1) * 0.5 * 0.15;
+          for (const a of aliens)
+            if (a.alive) {
+              const col =
+                a.type === "alien1"
+                  ? "#7fffd4"
+                  : a.type === "alien2"
+                  ? "#ffd27f"
+                  : "#ff8fb1";
+              const sha =
+                a.type === "alien1"
+                  ? "#1a3d3a"
+                  : a.type === "alien2"
+                  ? "#3a2e1a"
+                  : "#3a1a28";
+              drawSprite(
+                a.type,
+                Math.floor(a.x),
+                Math.floor(a.y + stepPulse),
+                col,
+                sha
+              );
+            }
+          for (let i = 0; i < Math.max(0, lives); i++)
+            drawSprite("heart", 6 + i * 10, 6, "#ff7fa1", "#3a1a28");
+          ctx.fillStyle = "#79e6ff";
+          ctx.font = "6px monospace";
+          ctx.fillText(
+            "ARROWS/A,D = MOVE   SPACE = FIRE   P = PAUSE",
+            12,
+            VH - 6
+          );
+        }
+
+        function writeText(text, cx, cy, size, color, glow = false) {
+          ctx.save();
+          ctx.translate(Math.floor(cx), Math.floor(cy));
+          const pixScale = Number(screen.dataset.pixScale || 1);
+          const doGlow = glow && pixScale >= 6;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillStyle = color;
+          ctx.font = `${size}px monospace`;
+          ctx.fillText(text, 0, 0);
+          if (doGlow) {
+            ctx.globalAlpha = 0.2;
+            for (let r = 1; r <= 3; r++) {
+              ctx.fillText(text, r, 0);
+              ctx.fillText(text, -r, 0);
+              ctx.fillText(text, 0, r);
+              ctx.fillText(text, 0, -r);
+            }
+          }
+          ctx.restore();
+        }
+        function drawTitle() {
+          writeText("PIXEL", VW / 2, VH / 2 - 36, 14, "#b8f1ff", true);
+          writeText("INVADERS", VW / 2, VH / 2 - 18, 14, "#ff93c1", true);
+          writeText("NEO DAWN", VW / 2, VH / 2 - 2, 10, "#a3ffb8", true);
+          writeText(
+            "PRESS SPACE / TAP TO START",
+            VW / 2,
+            VH / 2 + 22,
+            7,
+            "#ffffff",
+            false
+          );
+          const y = VH / 2 + 42;
+          drawSprite("alien1", VW / 2 - 30, y, "#7fffd4", "#1a3d3a");
+          drawSprite("alien2", VW / 2 - 4, y, "#ffd27f", "#3a2e1a");
+          drawSprite("alien3", VW / 2 + 22, y, "#ff8fb1", "#3a1a28");
+        }
+        function drawPaused() {
+          writeText("PAUSED", VW / 2, VH / 2 - 6, 12, "#ffffff", true);
+          writeText(
+            "PRESS P / RESUME",
+            VW / 2,
+            VH / 2 + 10,
+            7,
+            "#b8f1ff",
+            false
+          );
+        }
+        function drawGameOver() {
+          writeText("GAME OVER", VW / 2, VH / 2 - 14, 12, "#ff98b0", true);
+          writeText("SCORE: " + score, VW / 2, VH / 2 + 4, 8, "#ffffff", false);
+          writeText(
+            "PRESS P / TAP TO RESTART",
+            VW / 2,
+            VH / 2 + 18,
+            7,
+            "#b8f1ff",
+            false
+          );
+        }
+
+        screen.addEventListener("pointerdown", () => {
+          ensureAudio();
+          if (state === "title") startGame();
+          else if (state === "gameover") {
+            resetGame();
+            startGame();
+          }
+        });
+        addEventListener("keydown", (e) => {
+          if (state === "title" && (e.code === "Space" || e.code === "Enter"))
+            startGame();
+          if (
+            state === "gameover" &&
+            (e.code === "Space" || e.code === "Enter")
+          ) {
+            resetGame();
+            startGame();
+          }
+        });
+
+        function aliensAlive() {
+          let n = 0;
+          for (const a of aliens) if (a.alive) n++;
+          return n;
+        }
+      })();
+    </script>
+  </body>
+</html>
